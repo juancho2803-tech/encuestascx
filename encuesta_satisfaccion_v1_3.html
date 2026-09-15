@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es-AR" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Encuesta de satisfacción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ENCUESTA DE SATISFACCIÓN — v1 (versión neutra)
+   Single file. Sin dependencias. Mobile-first.
+   Config editable en el bloque CONFIG del JS, al final del archivo.
+   ============================================================ */
+
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eceef1;
+  --text:#14171c; --text-soft:#5b6472; --text-faint:#8a93a1;
+  --border:#dcdfe4; --border-strong:#c3c8d0;
+  --accent:#1f4fd8; --accent-ink:#ffffff; --accent-soft:rgba(31,79,216,.10);
+  --ok:#0f7a4d; --warn:#b4530a;
+  --shadow:0 1px 2px rgba(16,20,28,.05), 0 8px 24px rgba(16,20,28,.07);
+  --radius:14px; --radius-sm:10px;
+  --maxw:560px;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1014; --surface:#161a20; --surface-2:#1e232b;
+  --text:#eef1f5; --text-soft:#a6b0bd; --text-faint:#717c8a;
+  --border:#2a3038; --border-strong:#3a424d;
+  --accent:#7ba4ff; --accent-ink:#0d1014; --accent-soft:rgba(123,164,255,.14);
+  --ok:#4ade9a; --warn:#f0a35e;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"]{
+    --bg:#0d1014; --surface:#161a20; --surface-2:#1e232b;
+    --text:#eef1f5; --text-soft:#a6b0bd; --text-faint:#717c8a;
+    --border:#2a3038; --border-strong:#3a424d;
+    --accent:#7ba4ff; --accent-ink:#0d1014; --accent-soft:rgba(123,164,255,.14);
+    --ok:#4ade9a; --warn:#f0a35e;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column;
+  transition:background .25s ease, color .25s ease;
+}
+
+/* ---------- Header ---------- */
+header{
+  padding:20px 16px 0; max-width:var(--maxw); width:100%; margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.brand{display:flex; align-items:center; gap:10px; min-width:0}
+.brand img{height:34px; width:auto; display:block}
+.wordmark{display:flex; flex-direction:column; line-height:1.15; min-width:0}
+.wordmark .co{font-weight:700; font-size:15px; letter-spacing:.14em; text-transform:uppercase}
+.wordmark .sub{font-size:11px; color:var(--text-faint); letter-spacing:.09em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.accent-bar{width:3px; height:30px; border-radius:2px; background:var(--accent); flex:none}
+
+.theme-btn{
+  flex:none; width:38px; height:38px; border-radius:50%;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-soft);
+  display:grid; place-items:center; cursor:pointer; transition:.18s;
+}
+.theme-btn:hover{border-color:var(--border-strong); color:var(--text)}
+.theme-btn svg{width:18px; height:18px}
+:root[data-theme="dark"] .ico-sun{display:block} :root[data-theme="dark"] .ico-moon{display:none}
+:root[data-theme="light"] .ico-sun{display:none} :root[data-theme="light"] .ico-moon{display:block}
+:root[data-theme="auto"] .ico-sun{display:none} :root[data-theme="auto"] .ico-moon{display:block}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"] .ico-sun{display:block}
+  :root[data-theme="auto"] .ico-moon{display:none}
+}
+
+/* ---------- Layout ---------- */
+main{
+  flex:1; width:100%; max-width:var(--maxw); margin:0 auto;
+  padding:18px 16px 40px;
+  display:flex; flex-direction:column; justify-content:center;
+}
+.card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:26px 22px; position:relative; overflow:hidden;
+}
+.card::before{content:''; position:absolute; inset:0 0 auto 0; height:3px; background:var(--accent)}
+
+.screen{display:none; animation:in .3s ease}
+.screen.on{display:block}
+@keyframes in{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+
+h1{font-size:21px; font-weight:700; margin:0 0 10px; letter-spacing:-.01em; line-height:1.3}
+h2{font-size:18px; font-weight:600; margin:0 0 8px; letter-spacing:-.01em}
+p{margin:0 0 14px; color:var(--text-soft)}
+p.lead{color:var(--text); font-size:15.5px}
+.muted{color:var(--text-faint); font-size:13px}
+
+.meta-row{
+  display:flex; flex-wrap:wrap; gap:6px; margin:0 0 18px;
+}
+.tag{
+  font-size:11.5px; font-weight:500; letter-spacing:.03em;
+  padding:4px 9px; border-radius:99px;
+  background:var(--surface-2); color:var(--text-soft); border:1px solid var(--border);
+}
+
+/* ---------- Rating ---------- */
+.rating-label{font-weight:600; font-size:15px; margin:0 0 12px; color:var(--text)}
+.rating{
+  display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:0 0 10px;
+}
+.rate{
+  aspect-ratio:1/1; border-radius:var(--radius-sm);
+  border:1.5px solid var(--border-strong); background:var(--surface);
+  color:var(--text); font-size:20px; font-weight:600; font-family:inherit;
+  cursor:pointer; transition:.16s ease;
+  display:grid; place-items:center;
+}
+.rate:hover{border-color:var(--accent); background:var(--accent-soft)}
+.rate:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.rate[aria-checked="true"]{
+  background:var(--accent); border-color:var(--accent); color:var(--accent-ink);
+  transform:translateY(-2px);
+}
+.scale-ends{display:flex; justify-content:space-between; font-size:12px; color:var(--text-faint); margin-bottom:6px}
+.rate-caption{
+  min-height:22px; text-align:center; font-size:14px; font-weight:600;
+  color:var(--accent); margin-bottom:4px;
+}
+
+/* ---------- Chips ---------- */
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px}
+.chip{
+  padding:9px 13px; border-radius:99px; font-size:14px; font-family:inherit;
+  border:1.5px solid var(--border-strong); background:var(--surface); color:var(--text);
+  cursor:pointer; transition:.16s;
+}
+.chip:hover{border-color:var(--accent)}
+.chip:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+
+textarea{
+  width:100%; min-height:104px; resize:vertical; font-family:inherit; font-size:15px;
+  padding:12px 13px; border-radius:var(--radius-sm); line-height:1.5;
+  border:1.5px solid var(--border-strong); background:var(--surface-2); color:var(--text);
+  transition:.16s;
+}
+textarea:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.counter{text-align:right; font-size:12px; color:var(--text-faint); margin-top:5px}
+
+/* ---------- Buttons ---------- */
+.actions{display:flex; gap:10px; margin-top:20px}
+.btn{
+  flex:1; padding:14px 18px; border-radius:var(--radius-sm); font-family:inherit;
+  font-size:15.5px; font-weight:600; cursor:pointer; border:1.5px solid transparent;
+  transition:.16s; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn-primary:disabled{opacity:.4; cursor:not-allowed}
+.btn-ghost{background:transparent; color:var(--text-soft); border-color:var(--border-strong); flex:0 0 auto; padding:14px 16px}
+.btn-ghost:hover{color:var(--text); border-color:var(--text-faint)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* ---------- Estados ---------- */
+.center{text-align:center; padding:12px 0}
+.badge{
+  width:56px; height:56px; border-radius:50%; margin:0 auto 16px;
+  display:grid; place-items:center; background:var(--accent-soft); color:var(--accent);
+}
+.badge svg{width:28px; height:28px}
+.spinner{
+  width:26px; height:26px; border-radius:50%; margin:0 auto 14px;
+  border:2.5px solid var(--border); border-top-color:var(--accent);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.demo-note{
+  max-width:var(--maxw); margin:0 auto 12px; padding:9px 13px;
+  border-radius:var(--radius-sm); font-size:12.5px;
+  background:var(--accent-soft); color:var(--text-soft);
+  border:1px dashed var(--border-strong);
+}
+footer{
+  text-align:center; font-size:11.5px; color:var(--text-faint);
+  padding:0 16px 26px; max-width:var(--maxw); margin:0 auto;
+}
+
+@media (max-width:380px){
+  .card{padding:22px 17px}
+  .rate{font-size:18px}
+  h1{font-size:19.5px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="accent-bar"></div>
+    <img id="logo" alt="" hidden>
+    <div class="wordmark">
+      <span class="co" id="coName">MAIPÚ</span>
+      <span class="sub" id="coSub">Automotores</span>
+    </div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
+    <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+  </button>
+</header>
+
+<div id="demoNote" class="demo-note" hidden></div>
+
+<main>
+  <!-- CARGANDO -->
+  <section class="screen on" id="scLoading">
+    <div class="card center">
+      <div class="spinner"></div>
+      <p class="muted">Cargando…</p>
+    </div>
+  </section>
+
+  <!-- PASO 1: PUNTUACIÓN -->
+  <section class="screen" id="scRating">
+    <div class="card">
+      <h1 id="greet">Hola</h1>
+      <div class="meta-row" id="metaRow"></div>
+      <p class="lead" id="intro"></p>
+
+      <div class="rating-label">¿Cómo calificás tu experiencia?</div>
+      <div class="rating" id="rating" role="radiogroup" aria-label="Puntuación del 1 al 5"></div>
+      <div class="scale-ends"><span>1 · Muy malo</span><span>5 · Excelente</span></div>
+      <div class="rate-caption" id="rateCaption"></div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btnNext" type="button" disabled>Continuar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PASO 2: MOTIVO -->
+  <section class="screen" id="scReason">
+    <div class="card">
+      <h2>Contanos qué pasó</h2>
+      <p id="reasonLead">Tu respuesta nos ayuda a corregirlo. ¿Qué fue lo que no estuvo bien?</p>
+
+      <div class="chips" id="chips"></div>
+
+      <textarea id="comment" maxlength="600" placeholder="Si querés, contanos con tus palabras (opcional)"></textarea>
+      <div class="counter"><span id="cCount">0</span>/600</div>
+
+      <div class="actions">
+        <button class="btn btn-ghost" id="btnBack" type="button" aria-label="Volver">Volver</button>
+        <button class="btn btn-primary" id="btnSend" type="button">Enviar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENVIANDO -->
+  <section class="screen" id="scSending">
+    <div class="card center">
+      <div class="spinner"></div>
+      <p class="muted">Enviando tu respuesta…</p>
+    </div>
+  </section>
+
+  <!-- GRACIAS -->
+  <section class="screen" id="scThanks">
+    <div class="card center">
+      <div class="badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h2 id="thanksTitle">¡Gracias!</h2>
+      <p id="thanksText">Registramos tu respuesta.</p>
+    </div>
+  </section>
+
+  <!-- YA RESPONDIDA -->
+  <section class="screen" id="scAlready">
+    <div class="card center">
+      <div class="badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h2>Ya recibimos tu respuesta</h2>
+      <p>Gracias por tomarte el tiempo. No hace falta que la completes de nuevo.</p>
+    </div>
+  </section>
+
+  <!-- ERROR -->
+  <section class="screen" id="scError">
+    <div class="card center">
+      <h2>No pudimos abrir la encuesta</h2>
+      <p id="errText">El enlace no es válido o venció. Si querés, escribinos y lo resolvemos.</p>
+      <div class="actions"><button class="btn btn-primary" id="btnRetry" type="button">Reintentar</button></div>
+    </div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+
+<script>
+/* ============================================================
+   CONFIG — lo único que hay que tocar
+   ============================================================ */
+const CONFIG = {
+  // URL del despliegue de Apps Script (/exec). Vacío = MODO DEMO.
+  GAS_URL: '',
+
+  EMPRESA: 'MAIPÚ',
+  EMPRESA_SUB: 'Automotores',
+
+  // Umbral: puntaje por debajo de este valor dispara la pregunta de motivo.
+  UMBRAL_MOTIVO: 5,
+
+  // Acento por marca. LOGO: ruta a tu archivo (ej. 'logos/vw.png'). Vacío = wordmark de texto.
+  MARCAS: {
+    default:    { nombre:'',           accent:'#1f4fd8', accentDark:'#7ba4ff', logo:'' },
+    vw:         { nombre:'Volkswagen', accent:'#0a2a6b', accentDark:'#6f9dfb', logo:'' },
+    ford:       { nombre:'Ford',       accent:'#0a47c2', accentDark:'#5fa8ff', logo:'' },
+    chevrolet:  { nombre:'Chevrolet',  accent:'#8a6a12', accentDark:'#e3b84f', logo:'' },
+    audi:       { nombre:'Audi',       accent:'#a8082a', accentDark:'#ff6b85', logo:'' }
+  },
+
+  // Motivos por tipo de operación.
+  MOTIVOS: {
+    posventa: [
+      'Tiempo de espera',
+      'Calidad del trabajo realizado',
+      'Atención del personal',
+      'Precio o presupuesto',
+      'Comunicación y seguimiento',
+      'No se resolvió el problema',
+      'Estado del vehículo al entregarlo'
+    ],
+    ventas: [
+      'Tiempo hasta la entrega',
+      'Atención del vendedor',
+      'Información poco clara',
+      'Precio o financiación',
+      'Documentación o patentamiento',
+      'Accesorios incompletos',
+      'Estado del vehículo al entregarlo'
+    ]
+  },
+
+  TEXTOS: {
+    intro_posventa: 'Pasaste por nuestro taller hace poco y queremos saber cómo te fue. Son 10 segundos y nos sirve muchísimo para mejorar la atención.',
+    intro_ventas:   'Hace poco recibiste tu vehículo y queremos saber cómo fue la experiencia. Son 10 segundos y nos ayuda a mejorar.',
+    gracias_alto:   '¡Nos alegra mucho! Gracias por elegirnos y por tomarte el momento de responder.',
+    gracias_bajo:   'Gracias por la sinceridad. Tu comentario va directo al responsable del área y vamos a contactarte.'
+  }
+};
+
+const CAPTIONS = { 1:'Muy malo', 2:'Malo', 3:'Regular', 4:'Bueno', 5:'Excelente' };
+
+/* ============================================================
+   Estado
+   ============================================================ */
+const state = { id:'', cliente:null, marca:'default', tipo:'posventa', score:0, motivos:[], demo:false };
+
+/* ============================================================
+   Utilidades
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('on');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+/* ---------- Tema ---------- */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  safeSet('enc_theme', t);
+  applyAccent();
+}
+function currentIsDark(){
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function applyAccent(){
+  const m = CONFIG.MARCAS[state.marca] || CONFIG.MARCAS.default;
+  const color = currentIsDark() ? m.accentDark : m.accent;
+  document.documentElement.style.setProperty('--accent', color);
+  document.documentElement.style.setProperty('--accent-ink', currentIsDark() ? '#0d1014' : '#ffffff');
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  document.documentElement.style.setProperty('--accent-soft', `rgba(${r},${g},${b},${currentIsDark() ? .16 : .10})`);
+}
+$('#themeBtn').addEventListener('click', () => {
+  applyTheme(currentIsDark() ? 'light' : 'dark');
+});
+applyTheme(safeGet('enc_theme') || 'auto');
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAccent);
+
+/* ---------- JSONP (evita CORS con Apps Script) ---------- */
+function jsonp(url, data, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const cb = 'cb_' + Math.random().toString(36).slice(2);
+    const qs = new URLSearchParams(Object.assign({ callback: cb }, data)).toString();
+    const s = document.createElement('script');
+    let done = false;
+
+    const cleanup = () => {
+      done = true;
+      delete window[cb];
+      if (s.parentNode) s.parentNode.removeChild(s);
+      clearTimeout(timer);
+    };
+    const timer = setTimeout(() => {
+      if (!done) { cleanup(); reject(new Error('timeout')); }
+    }, timeoutMs || 15000);
+
+    window[cb] = res => { if (!done) { cleanup(); resolve(res); } };
+    s.onerror = () => { if (!done) { cleanup(); reject(new Error('network')); } };
+    s.src = url + (url.indexOf('?') === -1 ? '?' : '&') + qs;
+    document.body.appendChild(s);
+  });
+}
+
+/* ============================================================
+   Arranque
+   ============================================================ */
+async function init(){
+  state.id = (params.get('id') || '').trim();
+  $('#coName').textContent = CONFIG.EMPRESA;
+  $('#coSub').textContent  = CONFIG.EMPRESA_SUB;
+
+  // Ya respondida en este dispositivo
+  if (state.id && safeGet('enc_done_' + state.id)) { render(); show('scAlready'); return; }
+
+  // MODO DEMO: sin backend o sin id, toma los datos de la URL.
+  if (!CONFIG.GAS_URL || !state.id){
+    state.demo = true;
+    state.cliente = {
+      nombre:    params.get('n') || 'Juan Pérez',
+      marca:     (params.get('m') || 'vw').toLowerCase(),
+      sucursal:  params.get('s') || 'Duarte Quirós',
+      tipo:      (params.get('t') || 'posventa').toLowerCase(),
+      fecha:     params.get('f') || ''
+    };
+    const note = $('#demoNote');
+    note.hidden = false;
+    note.textContent = !CONFIG.GAS_URL
+      ? 'Modo demo — falta pegar la URL /exec de Apps Script en CONFIG.GAS_URL, acá abajo en el bloque de config.'
+      : 'Modo demo — el link no trae token. Abrilo como ' + location.pathname + '?id=TOKEN con un token de la hoja Envios.';
+    render();
+    show('scRating');
+    return;
+  }
+
+  // Con backend: busca los datos del cliente por token
+  try {
+    const res = await jsonp(CONFIG.GAS_URL, { action:'get', id: state.id });
+    if (!res || !res.ok){
+      $('#errText').textContent = (res && res.error === 'not_found')
+        ? 'El enlace no es válido o venció.'
+        : 'Hubo un problema al abrir la encuesta.';
+      show('scError'); return;
+    }
+    if (res.respondida){ state.cliente = res.cliente || {}; render(); show('scAlready'); return; }
+    state.cliente = res.cliente || {};
+    render();
+    show('scRating');
+  } catch(e){
+    $('#errText').textContent = 'No pudimos conectarnos. Revisá tu conexión y reintentá.';
+    show('scError');
+  }
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+function render(){
+  const c = state.cliente || {};
+  state.marca = (CONFIG.MARCAS[c.marca] ? c.marca : 'default');
+  state.tipo  = (c.tipo === 'ventas') ? 'ventas' : 'posventa';
+  applyAccent();
+
+  // Logo o wordmark
+  const m = CONFIG.MARCAS[state.marca];
+  const logoEl = $('#logo');
+  if (m.logo){ logoEl.src = m.logo; logoEl.alt = CONFIG.EMPRESA + ' ' + (m.nombre || ''); logoEl.hidden = false; }
+  $('#coSub').textContent = m.nombre || CONFIG.EMPRESA_SUB;
+
+  // Saludo y contexto
+  const nombre = (c.nombre || '').trim().split(/\s+/)[0] || '';
+  $('#greet').textContent = nombre ? ('Hola, ' + nombre) : 'Hola';
+  $('#intro').textContent = state.tipo === 'ventas' ? CONFIG.TEXTOS.intro_ventas : CONFIG.TEXTOS.intro_posventa;
+
+  const tags = [];
+  if (m.nombre) tags.push(m.nombre);
+  if (c.sucursal) tags.push(c.sucursal);
+  if (c.fecha) tags.push(c.fecha);
+  $('#metaRow').innerHTML = tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('');
+
+  buildRating();
+  buildChips();
+  $('#footer').textContent = CONFIG.EMPRESA + ' ' + CONFIG.EMPRESA_SUB + ' · Tu respuesta es confidencial';
+}
+
+function buildRating(){
+  const box = $('#rating');
+  box.innerHTML = '';
+  for (let i = 1; i <= 5; i++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rate';
+    b.textContent = i;
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', 'false');
+    b.setAttribute('aria-label', i + ' de 5 — ' + CAPTIONS[i]);
+    b.dataset.v = i;
+    b.addEventListener('click', () => pick(i));
+    box.appendChild(b);
+  }
+  box.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = Math.min(5, Math.max(1, (state.score || 0) + (e.key === 'ArrowRight' ? 1 : -1)));
+    pick(next);
+    box.querySelector('[data-v="' + next + '"]').focus();
+  });
+}
+
+function pick(v){
+  state.score = v;
+  document.querySelectorAll('.rate').forEach(b => {
+    b.setAttribute('aria-checked', String(Number(b.dataset.v) === v));
+  });
+  $('#rateCaption').textContent = CAPTIONS[v];
+  $('#btnNext').disabled = false;
+}
+
+function buildChips(){
+  const box = $('#chips');
+  box.innerHTML = '';
+  const lista = (CONFIG.MOTIVOS[state.tipo] || []).concat(['Otro']);
+  lista.forEach(txt => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = txt;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      const on = b.getAttribute('aria-pressed') === 'true';
+      b.setAttribute('aria-pressed', String(!on));
+      state.motivos = on
+        ? state.motivos.filter(x => x !== txt)
+        : state.motivos.concat([txt]);
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ============================================================
+   Navegación y envío
+   ============================================================ */
+$('#btnNext').addEventListener('click', () => {
+  if (!state.score) return;
+  if (state.score >= CONFIG.UMBRAL_MOTIVO) { send(); return; }
+  $('#reasonLead').textContent = state.score <= 2
+    ? 'Lamentamos que no haya sido una buena experiencia. ¿Qué fue lo que falló?'
+    : 'Gracias por la puntuación. ¿Qué podríamos haber hecho mejor?';
+  show('scReason');
+});
+
+$('#btnBack').addEventListener('click', () => show('scRating'));
+$('#btnRetry').addEventListener('click', () => { show('scLoading'); init(); });
+
+$('#comment').addEventListener('input', e => {
+  $('#cCount').textContent = e.target.value.length;
+});
+
+$('#btnSend').addEventListener('click', send);
+
+async function send(){
+  show('scSending');
+  const payload = {
+    action:   'save',
+    id:       state.id,
+    score:    state.score,
+    motivos:  state.motivos.join(' | '),
+    comentario: ($('#comment').value || '').slice(0, 600),
+    ua:       navigator.userAgent.slice(0, 120)
+  };
+
+  if (state.demo){
+    console.log('[DEMO] payload que se enviaría:', payload);
+    setTimeout(() => finish(), 700);
+    return;
+  }
+
+  try {
+    const res = await jsonp(CONFIG.GAS_URL, payload, 20000);
+    if (res && res.ok){ finish(); }
+    else if (res && res.error === 'already'){ show('scAlready'); }
+    else { $('#errText').textContent = 'No pudimos guardar tu respuesta. Reintentá en un momento.'; show('scError'); }
+  } catch(e){
+    $('#errText').textContent = 'No pudimos guardar tu respuesta. Revisá tu conexión y reintentá.';
+    show('scError');
+  }
+}
+
+function finish(){
+  if (state.id) safeSet('enc_done_' + state.id, '1');
+  const alto = state.score >= CONFIG.UMBRAL_MOTIVO;
+  $('#thanksTitle').textContent = alto ? '¡Gracias!' : 'Gracias por contarnos';
+  $('#thanksText').textContent  = alto ? CONFIG.TEXTOS.gracias_alto : CONFIG.TEXTOS.gracias_bajo;
+  show('scThanks');
+}
+
+init();
+</script>
+</body>
+</html>
