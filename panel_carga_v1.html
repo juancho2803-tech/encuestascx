@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es-AR" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carga de base · Encuestas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PANEL DE CARGA — Encuestas VW · v1
+   Sube el Excel del DMS a la planilla, validando antes.
+   La config está en el bloque CONFIG del JS, al final.
+   ============================================================ */
+
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eceef1; --surface-3:#e3e6ea;
+  --text:#14171c; --text-soft:#5b6472; --text-faint:#8a93a1;
+  --border:#dcdfe4; --border-strong:#c3c8d0;
+  --accent:#0a2a6b; --accent-ink:#ffffff; --accent-soft:rgba(10,42,107,.09);
+  --ok:#0f7a4d; --ok-soft:rgba(15,122,77,.11);
+  --warn:#96600a; --warn-soft:rgba(150,96,10,.12);
+  --bad:#b3261e; --bad-soft:rgba(179,38,30,.10);
+  --shadow:0 1px 2px rgba(16,20,28,.05), 0 8px 24px rgba(16,20,28,.06);
+  --radius:14px; --radius-sm:9px;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1014; --surface:#161a20; --surface-2:#1e232b; --surface-3:#272d36;
+  --text:#eef1f5; --text-soft:#a6b0bd; --text-faint:#717c8a;
+  --border:#2a3038; --border-strong:#3a424d;
+  --accent:#6f9dfb; --accent-ink:#0d1014; --accent-soft:rgba(111,157,251,.15);
+  --ok:#4ade9a; --ok-soft:rgba(74,222,154,.13);
+  --warn:#f0b45e; --warn-soft:rgba(240,180,94,.14);
+  --bad:#ff7b72; --bad-soft:rgba(255,123,114,.13);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"]{
+    --bg:#0d1014; --surface:#161a20; --surface-2:#1e232b; --surface-3:#272d36;
+    --text:#eef1f5; --text-soft:#a6b0bd; --text-faint:#717c8a;
+    --border:#2a3038; --border-strong:#3a424d;
+    --accent:#6f9dfb; --accent-ink:#0d1014; --accent-soft:rgba(111,157,251,.15);
+    --ok:#4ade9a; --ok-soft:rgba(74,222,154,.13);
+    --warn:#f0b45e; --warn-soft:rgba(240,180,94,.14);
+    --bad:#ff7b72; --bad-soft:rgba(255,123,114,.13);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  transition:background .25s, color .25s;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:22px 18px 60px}
+
+/* Header */
+header{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:22px}
+.brand{display:flex; align-items:center; gap:11px; min-width:0}
+.bar{width:3px; height:34px; border-radius:2px; background:var(--accent); flex:none}
+.brand h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-.01em}
+.brand span{display:block; font-size:12px; color:var(--text-faint); font-weight:500; letter-spacing:.07em; text-transform:uppercase}
+.theme-btn{
+  width:38px; height:38px; border-radius:50%; flex:none;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-soft);
+  display:grid; place-items:center; cursor:pointer; transition:.18s;
+}
+.theme-btn:hover{border-color:var(--border-strong); color:var(--text)}
+.theme-btn svg{width:18px;height:18px}
+:root[data-theme="dark"] .ico-sun{display:block} :root[data-theme="dark"] .ico-moon{display:none}
+:root[data-theme="light"] .ico-sun{display:none} :root[data-theme="light"] .ico-moon{display:block}
+:root[data-theme="auto"] .ico-sun{display:none} :root[data-theme="auto"] .ico-moon{display:block}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"] .ico-sun{display:block}
+  :root[data-theme="auto"] .ico-moon{display:none}
+}
+
+/* Fichas */
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:11px; margin-bottom:22px}
+.tile{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow);
+}
+.tile .k{font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-faint); font-weight:600}
+.tile .v{font-size:27px; font-weight:700; letter-spacing:-.02em; margin-top:3px; line-height:1.1}
+.tile .v small{font-size:14px; font-weight:500; color:var(--text-faint)}
+
+/* Tarjetas */
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:20px; margin-bottom:16px;
+}
+.card h2{
+  font-size:14px; font-weight:700; margin:0 0 3px; text-transform:uppercase; letter-spacing:.06em;
+  display:flex; align-items:center; gap:9px;
+}
+.step{
+  width:21px; height:21px; border-radius:50%; background:var(--accent); color:var(--accent-ink);
+  display:grid; place-items:center; font-size:11.5px; font-weight:700; flex:none;
+}
+.card p.hint{color:var(--text-soft); font-size:13.5px; margin:0 0 15px}
+.card.off{opacity:.45; pointer-events:none}
+
+/* Dropzone */
+.drop{
+  border:2px dashed var(--border-strong); border-radius:var(--radius);
+  padding:32px 18px; text-align:center; cursor:pointer; transition:.18s; background:var(--surface-2);
+}
+.drop:hover,.drop.over{border-color:var(--accent); background:var(--accent-soft)}
+.drop svg{width:30px; height:30px; color:var(--text-faint); margin-bottom:8px}
+.drop b{display:block; font-size:15px; margin-bottom:3px}
+.drop span{font-size:13px; color:var(--text-faint)}
+.file-info{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:11px 14px; font-size:13.5px;
+}
+.file-info b{font-weight:600}
+
+/* Mapeo */
+.map-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px}
+.field label{display:block; font-size:12px; font-weight:600; color:var(--text-soft); margin-bottom:5px}
+.field label em{font-style:normal; color:var(--bad)}
+select,input[type=text]{
+  width:100%; padding:9px 11px; font-family:inherit; font-size:14px;
+  border:1.5px solid var(--border-strong); border-radius:var(--radius-sm);
+  background:var(--surface); color:var(--text); transition:.16s;
+}
+select:focus,input:focus{outline:none; border-color:var(--accent)}
+.auto-tag{font-size:10.5px; color:var(--ok); font-weight:600; margin-left:5px}
+
+/* Resumen de validación */
+.vals{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:14px}
+.val{
+  padding:8px 13px; border-radius:var(--radius-sm); font-size:13px; font-weight:600;
+  border:1px solid transparent; display:flex; align-items:center; gap:7px;
+}
+.val b{font-size:16px; font-weight:700}
+.val.ok{background:var(--ok-soft); color:var(--ok); border-color:var(--ok)}
+.val.warn{background:var(--warn-soft); color:var(--warn); border-color:var(--warn)}
+.val.bad{background:var(--bad-soft); color:var(--bad); border-color:var(--bad)}
+
+/* Tabla */
+.tbl-wrap{max-height:400px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-sm)}
+table{width:100%; border-collapse:collapse; font-size:13px}
+thead th{
+  position:sticky; top:0; background:var(--surface-3); text-align:left; padding:9px 11px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-soft);
+  font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap; z-index:1;
+}
+tbody td{padding:8px 11px; border-bottom:1px solid var(--border); white-space:nowrap}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.excl td{opacity:.5}
+.pill{
+  display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700;
+  letter-spacing:.02em;
+}
+.pill.ok{background:var(--ok-soft); color:var(--ok)}
+.pill.warn{background:var(--warn-soft); color:var(--warn)}
+.pill.bad{background:var(--bad-soft); color:var(--bad)}
+.mono{font-family:ui-monospace,'Cascadia Code',Consolas,monospace; font-size:12.5px}
+
+/* Botones */
+.actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:16px}
+.btn{
+  padding:11px 20px; border-radius:var(--radius-sm); font-family:inherit; font-size:14.5px;
+  font-weight:600; cursor:pointer; border:1.5px solid transparent; transition:.16s;
+  display:inline-flex; align-items:center; gap:8px;
+}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover:not(:disabled){filter:brightness(1.12)}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn-ghost{background:transparent; color:var(--text-soft); border-color:var(--border-strong)}
+.btn-ghost:hover{color:var(--text); border-color:var(--text-faint)}
+.chk{display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--text-soft); cursor:pointer}
+.chk input{width:16px; height:16px; accent-color:var(--accent); cursor:pointer}
+
+/* Mensajes */
+.msg{padding:12px 15px; border-radius:var(--radius-sm); font-size:14px; margin-top:14px; border:1px solid}
+.msg.ok{background:var(--ok-soft); color:var(--ok); border-color:var(--ok)}
+.msg.bad{background:var(--bad-soft); color:var(--bad); border-color:var(--bad)}
+.msg.info{background:var(--accent-soft); color:var(--text-soft); border-color:var(--border-strong)}
+.spinner{
+  width:15px; height:15px; border-radius:50%; display:inline-block;
+  border:2px solid rgba(128,128,128,.3); border-top-color:currentColor;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none !important}
+
+@media (max-width:640px){
+  .wrap{padding:16px 13px 44px}
+  .card{padding:16px}
+  .tile .v{font-size:23px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="bar"></div>
+      <div>
+        <h1 id="hTitulo">Carga de base</h1>
+        <span id="hSub">Encuestas · Volkswagen</span>
+      </div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
+      <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+    </button>
+  </header>
+
+  <!-- FICHAS -->
+  <div class="tiles" id="tiles">
+    <div class="tile"><div class="k">Pendientes de envío</div><div class="v" id="tPend">—</div></div>
+    <div class="tile"><div class="k">Enviados hoy</div><div class="v" id="tEnv">—</div></div>
+    <div class="tile"><div class="k">Respuestas hoy</div><div class="v" id="tResp">—</div></div>
+    <div class="tile"><div class="k">Promedio 30 días</div><div class="v" id="tProm">—</div></div>
+  </div>
+
+  <!-- PASO 1 -->
+  <div class="card" id="card1">
+    <h2><span class="step">1</span> Elegí el archivo</h2>
+    <p class="hint">Arrastrá el Excel o CSV tal como sale del DMS. No hace falta ordenarlo ni borrarle columnas.</p>
+
+    <div class="drop" id="drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v13"/></svg>
+      <b>Arrastrá el archivo acá</b>
+      <span>o hacé clic para buscarlo · .xlsx, .xls, .csv</span>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+
+    <div class="file-info hidden" id="fileInfo">
+      <div><b id="fiName"></b> · <span id="fiRows"></span></div>
+      <button class="btn btn-ghost" id="btnOtro" type="button">Cambiar archivo</button>
+    </div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="card off" id="card2">
+    <h2><span class="step">2</span> Emparejá las columnas</h2>
+    <p class="hint">Detecté lo que pude por el nombre del encabezado. Revisá que esté bien y completá lo que falte.</p>
+    <div class="map-grid" id="mapGrid"></div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="card off" id="card3">
+    <h2><span class="step">3</span> Revisá antes de cargar</h2>
+    <p class="hint">Solo se cargan las filas en verde. Las demás quedan afuera con el motivo a la vista.</p>
+
+    <div class="vals" id="vals"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Estado</th><th>Nombre</th><th>Teléfono normalizado</th><th>Tipo</th><th>Sucursal</th><th>Original</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="tblNota" style="margin:9px 0 0"></p>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btnCargar" type="button">Cargar a la planilla</button>
+      <label class="chk"><input type="checkbox" id="chkDup"> Cargar igual los ya encuestados</label>
+    </div>
+
+    <div id="msg"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const CONFIG = {
+  // Misma URL /exec que usás en el formulario
+  GAS_URL: '',
+
+  TITULO: 'Carga de base',
+  SUBTITULO: 'Encuestas · Volkswagen',
+
+  // Marca de este panel. Un panel por marca, igual que los bots.
+  MARCA: 'vw',
+
+  // Opciones de los desplegables
+  SUCURSALES: ['Duarte Quirós', 'Sabattini'],
+  TIPOS: [
+    { v:'posventa', t:'Posventa (taller)' },
+    { v:'ventas',   t:'Ventas (0km)' }
+  ],
+
+  // No volver a encuestar a alguien contactado en los últimos N días
+  DIAS_DEDUP: 60,
+
+  // Filas por tanda al subir (evita pedidos gigantes)
+  LOTE: 200
+};
+
+/* Encabezados que se reconocen solos, por campo */
+const ALIAS = {
+  nombre:   ['nombre','cliente','apellido y nombre','nombre y apellido','apellido','titular','razon social','nombre cliente','nombre del cliente'],
+  telefono: ['telefono','celular','movil','tel','whatsapp','contacto','telefono celular','nro telefono','numero'],
+  email:    ['email','mail','correo','e mail','correo electronico'],
+  sucursal: ['sucursal','agencia','local','punto de venta','concesionario','sede'],
+  tipo:     ['tipo','operacion','area','sector','servicio'],
+  fecha_operacion: ['fecha','fecha operacion','fecha de operacion','fecha factura','fecha entrega','fecha cierre','fecha ot']
+};
+
+const CAMPOS = [
+  { k:'nombre',          t:'Nombre del cliente', req:true  },
+  { k:'telefono',        t:'Teléfono',           req:true  },
+  { k:'email',           t:'Email',              req:false },
+  { k:'sucursal',        t:'Sucursal',           req:false, fijo:'SUCURSALES' },
+  { k:'tipo',            t:'Tipo de operación',  req:false, fijo:'TIPOS' },
+  { k:'fecha_operacion', t:'Fecha de operación', req:false }
+];
+
+/* ============================================================
+   Estado
+   ============================================================ */
+const state = { filas:[], headers:[], mapa:{}, fijos:{}, existentes:{}, analizadas:[] };
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ---------- Tema ---------- */
+function esOscuro(){
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+$('#themeBtn').addEventListener('click', () => {
+  const t = esOscuro() ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  safeSet('panel_theme', t);
+});
+document.documentElement.setAttribute('data-theme', safeGet('panel_theme') || 'auto');
+
+/* ---------- Texto ---------- */
+function norm(s){
+  return String(s == null ? '' : s).toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/**
+ * Misma lógica que el backend: un número argentino son 10 dígitos.
+ * Si no logra armarlos, devuelve '' y la fila queda afuera.
+ */
+function normalizarTelefono(valor){
+  let t = String(valor == null ? '' : valor).replace(/^'/, '').replace(/[^\d]/g, '');
+  if (!t) return '';
+  t = t.replace(/^00/, '');
+  if (t.indexOf('54') === 0 && t.length > 10) t = t.slice(2);
+  if (t.charAt(0) === '0') t = t.slice(1);
+  if (t.length === 11 && t.charAt(0) === '9') t = t.slice(1);
+  if (t.length === 12){
+    const areas = [4,3,2];
+    for (let i = 0; i < areas.length; i++){
+      const a = areas[i];
+      if (t.substr(a,2) === '15'){ t = t.slice(0,a) + t.slice(a+2); break; }
+    }
+  }
+  if (t.length !== 10) return '';
+  return '549' + t;
+}
+
+/**
+ * El DMS no siempre dice "posventa" / "ventas".
+ * Traduce lo que venga a uno de los dos valores que entiende el formulario.
+ */
+function normalizarTipo(valor){
+  const v = norm(valor);
+  if (!v) return 'posventa';
+  if (/(venta|0 ?km|okm|cero|entrega|patenta|comercial)/.test(v)) return 'ventas';
+  return 'posventa';
+}
+
+/* ---------- JSONP ---------- */
+function jsonp(data, timeoutMs){
+  return new Promise((resolve, reject) => {
+    if (!CONFIG.GAS_URL) return reject(new Error('sin_backend'));
+    const cb = 'cb_' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    let done = false;
+    const cleanup = () => { done = true; delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); clearTimeout(timer); };
+    const timer = setTimeout(() => { if (!done){ cleanup(); reject(new Error('timeout')); } }, timeoutMs || 20000);
+    window[cb] = r => { if (!done){ cleanup(); resolve(r); } };
+    s.onerror = () => { if (!done){ cleanup(); reject(new Error('network')); } };
+    s.src = CONFIG.GAS_URL + '?' + new URLSearchParams(Object.assign({ callback: cb }, data)).toString();
+    document.body.appendChild(s);
+  });
+}
+
+/* ============================================================
+   Fichas
+   ============================================================ */
+async function cargarResumen(){
+  if (!CONFIG.GAS_URL){
+    $('#tPend').textContent = '—';
+    mostrarMsg('info', 'Falta pegar la URL /exec de Apps Script en CONFIG.GAS_URL. Podés probar la validación igual, pero no vas a poder cargar.');
+    return;
+  }
+  try{
+    const r = await jsonp({ action:'resumen' });
+    if (!r || !r.ok) return;
+    $('#tPend').textContent = r.pendientes;
+    $('#tEnv').textContent  = r.enviados_hoy + (r.errores_hoy ? ' <small>+' + r.errores_hoy + ' err</small>' : '');
+    $('#tEnv').innerHTML    = r.enviados_hoy + (r.errores_hoy ? ' <small>+' + r.errores_hoy + ' err</small>' : '');
+    $('#tResp').textContent = r.respuestas_hoy;
+    $('#tProm').innerHTML   = r.promedio_30d != null
+      ? r.promedio_30d + ' <small>/ 5</small>'
+      : '—';
+  }catch(e){
+    mostrarMsg('bad', 'No pude leer el resumen de la planilla. Revisá que la URL de Apps Script esté bien y que la implementación sea la última versión.');
+  }
+}
+
+async function cargarExistentes(){
+  state.existentes = {};
+  if (!CONFIG.GAS_URL) return;
+  try{
+    const r = await jsonp({ action:'existentes', dias: CONFIG.DIAS_DEDUP });
+    if (r && r.ok) (r.telefonos || []).forEach(t => { state.existentes[t] = true; });
+  }catch(e){ /* sin la lista, no marcamos duplicados; el backend igual los filtra */ }
+}
+
+/* ============================================================
+   Paso 1 — archivo
+   ============================================================ */
+const drop = $('#drop'), fileInput = $('#fileInput');
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('over');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) leerArchivo(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) leerArchivo(e.target.files[0]); });
+$('#btnOtro').addEventListener('click', () => {
+  fileInput.value = '';
+  drop.classList.remove('hidden');
+  $('#fileInfo').classList.add('hidden');
+  $('#card2').classList.add('off');
+  $('#card3').classList.add('off');
+  $('#msg').innerHTML = '';
+});
+
+function leerArchivo(file){
+  const lector = new FileReader();
+  lector.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      const hoja = wb.Sheets[wb.SheetNames[0]];
+      const filas = XLSX.utils.sheet_to_json(hoja, { defval:'', raw:false });
+
+      if (!filas.length){ mostrarMsg('bad', 'El archivo no tiene filas de datos.'); return; }
+
+      state.filas   = filas;
+      state.headers = Object.keys(filas[0]);
+
+      drop.classList.add('hidden');
+      $('#fileInfo').classList.remove('hidden');
+      $('#fiName').textContent = file.name;
+      $('#fiRows').textContent = filas.length + ' filas · ' + state.headers.length + ' columnas';
+
+      construirMapeo();
+      $('#card2').classList.remove('off');
+      cargarExistentes().then(analizar);
+    }catch(err){
+      mostrarMsg('bad', 'No pude leer el archivo: ' + err.message);
+    }
+  };
+  lector.readAsArrayBuffer(file);
+}
+
+/* ============================================================
+   Paso 2 — mapeo
+   ============================================================ */
+function detectar(campo){
+  const alias = ALIAS[campo] || [];
+  const hs = state.headers.map(h => ({ h:h, n:norm(h) }));
+  for (const a of alias){                       // coincidencia exacta primero
+    const hit = hs.find(x => x.n === a);
+    if (hit) return hit.h;
+  }
+  for (const a of alias){                       // después, que lo contenga
+    const hit = hs.find(x => x.n.indexOf(a) !== -1);
+    if (hit) return hit.h;
+  }
+  return '';
+}
+
+function construirMapeo(){
+  const grid = $('#mapGrid');
+  grid.innerHTML = '';
+
+  CAMPOS.forEach(c => {
+    const auto = detectar(c.k);
+    state.mapa[c.k] = auto;
+
+    const div = document.createElement('div');
+    div.className = 'field';
+    const opciones = ['<option value="">— no está en el archivo —</option>']
+      .concat(state.headers.map(h =>
+        '<option value="' + esc(h) + '"' + (h === auto ? ' selected' : '') + '>' + esc(h) + '</option>'));
+
+    div.innerHTML =
+      '<label>' + c.t + (c.req ? ' <em>*</em>' : '') +
+      (auto ? '<span class="auto-tag">detectada</span>' : '') + '</label>' +
+      '<select data-campo="' + c.k + '">' + opciones.join('') + '</select>' +
+      (c.fijo ? '<div style="margin-top:7px" data-fijo="' + c.k + '"></div>' : '');
+    grid.appendChild(div);
+  });
+
+  // Desplegables de valor fijo, para cuando la columna no viene en el archivo
+  CAMPOS.filter(c => c.fijo).forEach(c => {
+    const cont = grid.querySelector('[data-fijo="' + c.k + '"]');
+    const lista = c.fijo === 'TIPOS'
+      ? CONFIG.TIPOS.map(o => '<option value="' + o.v + '">' + o.t + '</option>')
+      : CONFIG.SUCURSALES.map(o => '<option value="' + esc(o) + '">' + esc(o) + '</option>');
+    cont.innerHTML =
+      '<label style="font-size:11px;color:var(--text-faint)">Si no está, usar para todas:</label>' +
+      '<select data-fijo-sel="' + c.k + '">' + lista.join('') + '</select>';
+    state.fijos[c.k] = cont.querySelector('select').value;
+    cont.querySelector('select').addEventListener('change', e => {
+      state.fijos[c.k] = e.target.value; analizar();
+    });
+    cont.style.display = state.mapa[c.k] ? 'none' : 'block';
+  });
+
+  grid.addEventListener('change', e => {
+    const sel = e.target.closest('[data-campo]');
+    if (!sel) return;
+    state.mapa[sel.dataset.campo] = sel.value;
+    const fijo = grid.querySelector('[data-fijo="' + sel.dataset.campo + '"]');
+    if (fijo) fijo.style.display = sel.value ? 'none' : 'block';
+    analizar();
+  });
+}
+
+/* ============================================================
+   Paso 3 — validación
+   ============================================================ */
+function valor(fila, campo){
+  const col = state.mapa[campo];
+  if (col) return fila[col];
+  return state.fijos[campo] || '';
+}
+
+function analizar(){
+  if (!state.filas.length) return;
+  if (!state.mapa.nombre || !state.mapa.telefono){
+    $('#card3').classList.add('off');
+    return;
+  }
+
+  const vistos = {};
+  state.analizadas = state.filas.map(f => {
+    const nombre = String(valor(f, 'nombre') || '').trim();
+    const crudo  = valor(f, 'telefono');
+    const tel    = normalizarTelefono(crudo);
+
+    let estado = 'ok', motivo = 'Se carga';
+    if (!nombre)            { estado = 'bad';  motivo = 'Sin nombre'; }
+    else if (!tel)          { estado = 'bad';  motivo = 'Teléfono inválido'; }
+    else if (vistos[tel])   { estado = 'warn'; motivo = 'Repetido en el archivo'; }
+    else if (state.existentes[tel]) { estado = 'warn'; motivo = 'Ya encuestado'; }
+
+    if (tel) vistos[tel] = true;
+
+    return {
+      estado: estado, motivo: motivo,
+      nombre: nombre, telefono: tel, crudo: crudo,
+      email: String(valor(f, 'email') || '').trim(),
+      sucursal: String(valor(f, 'sucursal') || '').trim(),
+      tipo: normalizarTipo(valor(f, 'tipo')),
+      fecha_operacion: valor(f, 'fecha_operacion') || ''
+    };
+  });
+
+  pintar();
+  $('#card3').classList.remove('off');
+}
+
+function seleccionadas(){
+  const incluirDup = $('#chkDup').checked;
+  return state.analizadas.filter(r => r.estado === 'ok' || (incluirDup && r.estado === 'warn'));
+}
+
+function pintar(){
+  const a = state.analizadas;
+  const cOk   = a.filter(r => r.estado === 'ok').length;
+  const cWarn = a.filter(r => r.estado === 'warn').length;
+  const cBad  = a.filter(r => r.estado === 'bad').length;
+
+  $('#vals').innerHTML =
+    '<div class="val ok"><b>' + cOk + '</b> listas para cargar</div>' +
+    (cWarn ? '<div class="val warn"><b>' + cWarn + '</b> duplicadas</div>' : '') +
+    (cBad  ? '<div class="val bad"><b>' + cBad + '</b> con datos inválidos</div>' : '');
+
+  const tope = 200;
+  $('#tbody').innerHTML = a.slice(0, tope).map(r =>
+    '<tr class="' + (r.estado === 'ok' ? '' : 'excl') + '">' +
+      '<td><span class="pill ' + r.estado + '">' + esc(r.motivo) + '</span></td>' +
+      '<td>' + esc(r.nombre || '—') + '</td>' +
+      '<td class="mono">' + esc(r.telefono || '—') + '</td>' +
+      '<td>' + esc(r.tipo) + '</td>' +
+      '<td>' + esc(r.sucursal || '—') + '</td>' +
+      '<td class="mono" style="color:var(--text-faint)">' + esc(r.crudo) + '</td>' +
+    '</tr>').join('');
+
+  $('#tblNota').textContent = a.length > tope
+    ? 'Mostrando las primeras ' + tope + ' de ' + a.length + ' filas. Se cargan todas las que correspondan.'
+    : '';
+
+  const n = seleccionadas().length;
+  $('#btnCargar').textContent = n ? 'Cargar ' + n + ' registros a la planilla' : 'No hay nada para cargar';
+  $('#btnCargar').disabled = !n || !CONFIG.GAS_URL;
+}
+
+$('#chkDup').addEventListener('change', pintar);
+
+/* ============================================================
+   Subida
+   ============================================================ */
+$('#btnCargar').addEventListener('click', async () => {
+  const filas = seleccionadas();
+  if (!filas.length) return;
+
+  const btn = $('#btnCargar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Cargando…';
+  mostrarMsg('info', 'Subiendo ' + filas.length + ' registros. No cierres la pestaña.');
+
+  const payload = filas.map(r => ({
+    nombre: r.nombre, telefono: r.telefono, email: r.email,
+    marca: CONFIG.MARCA, sucursal: r.sucursal, tipo: r.tipo,
+    fecha_operacion: r.fecha_operacion
+  }));
+
+  let cargados = 0, omitidos = 0, invalidos = 0, error = null;
+
+  for (let i = 0; i < payload.length; i += CONFIG.LOTE){
+    const lote = payload.slice(i, i + CONFIG.LOTE);
+    try{
+      const res = await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // evita el preflight
+        body: JSON.stringify({
+          action: 'importar',
+          dias_dedup: $('#chkDup').checked ? 0 : CONFIG.DIAS_DEDUP,
+          filas: lote
+        })
+      });
+      const r = await res.json();
+      if (!r.ok){ error = r.error || 'desconocido'; break; }
+      cargados  += r.cargados;
+      omitidos  += r.omitidos;
+      invalidos += r.invalidos;
+    }catch(e){
+      error = e.message;
+      break;
+    }
+  }
+
+  btn.innerHTML = 'Cargar a la planilla';
+
+  if (error){
+    mostrarMsg('bad',
+      'Falló la carga (' + esc(error) + '). ' +
+      (cargados ? 'Alcanzaron a entrar ' + cargados + ' registros. ' : '') +
+      'Lo más común es que la implementación de Apps Script no esté actualizada: entrá a Implementar → Administrar implementaciones → editar → Versión: Nueva versión.');
+    btn.disabled = false;
+    return;
+  }
+
+  mostrarMsg('ok',
+    'Listo. Se cargaron ' + cargados + ' registros en estado PENDIENTE' +
+    (omitidos ? ', ' + omitidos + ' omitidos por duplicado' : '') +
+    (invalidos ? ', ' + invalidos + ' descartados por datos inválidos' : '') +
+    '. Ya están disponibles para el bot.');
+
+  cargarResumen();
+});
+
+function mostrarMsg(tipo, texto){
+  $('#msg').innerHTML = '<div class="msg ' + tipo + '">' + texto + '</div>';
+}
+
+/* ============================================================
+   Arranque
+   ============================================================ */
+$('#hTitulo').textContent = CONFIG.TITULO;
+$('#hSub').textContent    = CONFIG.SUBTITULO;
+cargarResumen();
+</script>
+</body>
+</html>
